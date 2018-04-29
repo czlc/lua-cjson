@@ -60,6 +60,10 @@
 #define CJSON_EXPORT    extern
 #endif
 
+#if defined(_WIN32) || defined(_WIN64)
+# define strncasecmp _strnicmp
+# endif
+
 /* Workaround for Solaris platforms missing isinf() */
 #if !defined(isinf) && (defined(USE_INTERNAL_ISINF) || defined(MISSING_ISINF))
 #define isinf(x) (!isnan(x) && isnan((x) - (x)))
