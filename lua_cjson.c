@@ -84,6 +84,8 @@
 #define DEFAULT_DECODE_INVALID_NUMBERS 0
 #endif
 
+#define MT_AS_ARRAY "MT_AS_ARRAY"
+
 typedef enum {
     T_OBJ_BEGIN,
     T_OBJ_END,
@@ -232,7 +234,7 @@ static int json_integer_option(lua_State *l, int optindex, int *setting,
     int value;
 
     if (!lua_isnil(l, optindex)) {
-        value = luaL_checkinteger(l, optindex);
+        value = (int)luaL_checkinteger(l, optindex);
         snprintf(errmsg, sizeof(errmsg), "expected integer between %d and %d", min, max);
         luaL_argcheck(l, min <= value && value <= max, 1, errmsg);
         *setting = value;
@@ -516,7 +518,7 @@ static int lua_array_length(lua_State *l, json_config_t *cfg, strbuf_t *json)
             /* Integer >= 1 ? */
             if (floor(k) == k && k >= 1) {
                 if (k > max)
-                    max = k;
+                    max = (int)k;
                 items++;
                 lua_pop(l, 1);
                 continue;
@@ -697,8 +699,22 @@ static void json_append_data(lua_State *l, json_config_t *cfg,
         len = lua_array_length(l, cfg, json);
         if (len > 0)
             json_append_array(l, cfg, current_depth, json, len);
-        else
-            json_append_object(l, cfg, current_depth, json);
+		else {
+			int is_array = 0;
+			int got = lua_getmetatable(l, -1);
+			if (got > 0) {
+				luaL_getmetatable(l, MT_AS_ARRAY);
+				is_array = lua_rawequal(l, -1, -2);
+				lua_pop(l, 2);
+			}
+
+			if (is_array) {
+				json_append_array(l, cfg, current_depth, json, 0);
+			}
+			else {
+				json_append_object(l, cfg, current_depth, json);
+			}
+		}
         break;
     case LUA_TNIL:
         strbuf_append_mem(json, "null", 4);
@@ -1245,7 +1261,11 @@ static void json_process_value(lua_State *l, json_parse_t *json,
         lua_pushlstring(l, token->value.string, token->string_len);
         break;;
     case T_NUMBER:
-        lua_pushnumber(l, token->value.number);
+		if (floor(token->value.number) == token->value.number)
+			lua_pushinteger(l, (lua_Integer)token->value.number);
+		else
+			lua_pushnumber(l, token->value.number);
+		
         break;;
     case T_BOOLEAN:
         lua_pushboolean(l, token->value.boolean);
@@ -1257,9 +1277,7 @@ static void json_process_value(lua_State *l, json_parse_t *json,
         json_parse_array_context(l, json);
         break;;
     case T_NULL:
-        /* In Lua, setting "t[k] = nil" will delete k from the table.
-         * Hence a NULL pointer lightuserdata object is used instead */
-        lua_pushlightuserdata(l, NULL);
+		lua_pushnil(l);
         break;;
     default:
         json_throw_parse_error(l, json, "value", token);
@@ -1387,7 +1405,10 @@ static int lua_cjson_new(lua_State *l)
     lua_pushlightuserdata(l, NULL);
     lua_setfield(l, -2, "null");
 
-    /* Set module name / version fields */
+	luaL_newmetatable(l, MT_AS_ARRAY);
+	lua_setfield(l, -2, "as_array");
+	
+	/* Set module name / version fields */
     lua_pushliteral(l, CJSON_MODNAME);
     lua_setfield(l, -2, "_NAME");
     lua_pushliteral(l, CJSON_VERSION);
