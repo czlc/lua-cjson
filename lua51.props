@@ -2,8 +2,8 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
-    <LUA_INC_DIR>D:\sourcecode\github\lua</LUA_INC_DIR>
-    <LUA_LIB_DIR>D:\sourcecode\github\lua\product</LUA_LIB_DIR>
+    <LUA_INC_DIR>D:\lua-5.1.5\src</LUA_INC_DIR>
+    <LUA_LIB_DIR>D:\lua-5.1.5\src\product</LUA_LIB_DIR>
   </PropertyGroup>
   <PropertyGroup />
   <ItemDefinitionGroup />
